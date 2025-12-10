@@ -134,75 +134,38 @@
 
 <script>
 (function () {
-  // Your real results page
   const RESULTS_PAGE = "https://internet-review.webflow.io/internet-providers";
 
-  // Get the <svg> root inside THIS document (the one served via githack)
   const svg = document.getElementById("svg");
   if (!svg) return;
 
-  // 1) Mark all state paths & add accessibility
   const statePaths = svg.querySelectorAll("path[data-id]");
+
   statePaths.forEach(function (path) {
     const code = path.getAttribute("data-id");  // e.g. "CA"
-
     path.classList.add("state");
     path.setAttribute("data-state", code);
-
-    // Make focusable and screen-reader friendly
     path.setAttribute("tabindex", "0");
     path.setAttribute("role", "button");
     path.setAttribute("aria-label", path.getAttribute("data-name") || code);
   });
 
-  // 2) Auto-generate centered labels (state initials)
-  const svgNS = "http://www.w3.org/2000/svg";
-
-  statePaths.forEach(function (path) {
-    const code = path.getAttribute("data-state");
-    const box = path.getBBox();
-
-    // Skip very tiny states if labels get messy
-    if (box.width < 6 && box.height < 6) return;
-
-    const text = document.createElementNS(svgNS, "text");
-    text.setAttribute("x", box.x + box.width / 2);
-    text.setAttribute("y", box.y + box.height / 2);
-    text.setAttribute("class", "state-label");
-    text.textContent = code;
-
-    svg.appendChild(text);
-  });
-
-  function goToResults(stateCode) {
-    // Pass the state through the URL so Webflow can see it
-    const url = RESULTS_PAGE + "?state=" + encodeURIComponent(stateCode);
-
-    // Break out of the iframe: change the *top* window, not just the iframe
-    try {
-      if (window.top && window.top !== window) {
-        window.top.location.href = url;
-      } else {
-        window.location.href = url;
-      }
-    } catch (err) {
-      // Fallback in case of weird sandboxing
-      window.location.href = url;
-    }
-  }
-
-  // 3) Handle clicks → redirect top window
   svg.addEventListener("click", function (e) {
     const target = e.target.closest(".state");
     if (!target) return;
 
     const stateCode = target.getAttribute("data-state");
 
-    // DO NOT use localStorage here: different origin from Webflow, it won't be shared
-    goToResults(stateCode);
+    try {
+      localStorage.setItem("selectedState", stateCode);
+    } catch (err) {}
+
+    const url = RESULTS_PAGE + "?state=" + encodeURIComponent(stateCode);
+
+    // IMPORTANT: break out of iframe
+    window.top.location.href = url;
   });
 
-  // 4) Keyboard support (Enter/Space)
   svg.addEventListener("keydown", function (e) {
     if (e.key !== "Enter" && e.key !== " ") return;
     const target = e.target.closest(".state");
