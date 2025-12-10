@@ -134,9 +134,10 @@
 
 <script>
 (function () {
-  // Change this to your real results page
+  // Your real results page
   const RESULTS_PAGE = "https://internet-review.webflow.io/internet-providers";
 
+  // Get the <svg> root inside THIS document (the one served via githack)
   const svg = document.getElementById("svg");
   if (!svg) return;
 
@@ -145,7 +146,6 @@
   statePaths.forEach(function (path) {
     const code = path.getAttribute("data-id");  // e.g. "CA"
 
-    // Add the class and data-state attribute
     path.classList.add("state");
     path.setAttribute("data-state", code);
 
@@ -162,7 +162,7 @@
     const code = path.getAttribute("data-state");
     const box = path.getBBox();
 
-    // Skip very tiny states (DC, maybe DE/RI) if labels get messy
+    // Skip very tiny states if labels get messy
     if (box.width < 6 && box.height < 6) return;
 
     const text = document.createElementNS(svgNS, "text");
@@ -174,25 +174,32 @@
     svg.appendChild(text);
   });
 
-  // 3) Handle clicks → redirect
+  function goToResults(stateCode) {
+    // Pass the state through the URL so Webflow can see it
+    const url = RESULTS_PAGE + "?state=" + encodeURIComponent(stateCode);
+
+    // Break out of the iframe: change the *top* window, not just the iframe
+    try {
+      if (window.top && window.top !== window) {
+        window.top.location.href = url;
+      } else {
+        window.location.href = url;
+      }
+    } catch (err) {
+      // Fallback in case of weird sandboxing
+      window.location.href = url;
+    }
+  }
+
+  // 3) Handle clicks → redirect top window
   svg.addEventListener("click", function (e) {
     const target = e.target.closest(".state");
     if (!target) return;
 
     const stateCode = target.getAttribute("data-state");
 
-    // Optional: store the state if you want to read it on /providers
-    try {
-      localStorage.setItem("selectedState", stateCode);
-    } catch (err) {
-      // ignore storage errors
-    }
-
-    // If you want to pass it in the URL too, use:
-    // const url = RESULTS_PAGE + "?state=" + encodeURIComponent(stateCode);
-    // window.location.href = url;
-
-    window.location.href = RESULTS_PAGE;
+    // DO NOT use localStorage here: different origin from Webflow, it won't be shared
+    goToResults(stateCode);
   });
 
   // 4) Keyboard support (Enter/Space)
