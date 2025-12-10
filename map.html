@@ -139,6 +139,7 @@
   const svg = document.getElementById("svg");
   if (!svg) return;
 
+  // 1) Mark all state paths & add accessibility
   const statePaths = svg.querySelectorAll("path[data-id]");
 
   statePaths.forEach(function (path) {
@@ -150,6 +151,26 @@
     path.setAttribute("aria-label", path.getAttribute("data-name") || code);
   });
 
+  // 2) Auto-generate centered labels (state initials)
+  const svgNS = "http://www.w3.org/2000/svg";
+
+  statePaths.forEach(function (path) {
+    const code = path.getAttribute("data-state");
+    const box = path.getBBox();
+
+    // Skip very tiny states if you want (DC, RI, etc.)
+    if (box.width < 6 && box.height < 6) return;
+
+    const text = document.createElementNS(svgNS, "text");
+    text.setAttribute("x", box.x + box.width / 2);
+    text.setAttribute("y", box.y + box.height / 2);
+    text.setAttribute("class", "state-label");
+    text.textContent = code;
+
+    svg.appendChild(text);
+  });
+
+  // 3) Click → go to providers page with state param, break out of iframe
   svg.addEventListener("click", function (e) {
     const target = e.target.closest(".state");
     if (!target) return;
@@ -162,10 +183,11 @@
 
     const url = RESULTS_PAGE + "?state=" + encodeURIComponent(stateCode);
 
-    // IMPORTANT: break out of iframe
+    // Break out of iframe so the results load in the parent page
     window.top.location.href = url;
   });
 
+  // 4) Keyboard support (Enter/Space)
   svg.addEventListener("keydown", function (e) {
     if (e.key !== "Enter" && e.key !== " ") return;
     const target = e.target.closest(".state");
@@ -175,3 +197,4 @@
   });
 })();
 </script>
+
