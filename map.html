@@ -138,16 +138,16 @@
 
 <script>
 (function () {
-  // Default pattern so EVERY state automatically has a page:
-  // Example: /internet-providers/ca, /internet-providers/ny, etc.
-  const DEFAULT_BASE = "/internet-providers";
+  const RESULTS_PAGE = "https://internet-review.webflow.io/internet-providers";
 
-  // Manual overrides (only add states you want to customize)
-  // You can use absolute URLs or relative paths.
+  // Only states listed here will behave differently.
+  // Put FULL URLs (recommended) or relative paths.
+  // Examples:
+  // CA: "https://internet-review.webflow.io/california"
+  // TX: "/internet-providers/texas"
   const STATE_LINKS = {
-    CA: "/ca",
-    TX: "/tx",
-    // NY: "/states/new-york",
+    // CA: "https://internet-review.webflow.io/internet-providers/california",
+    // TX: "https://internet-review.webflow.io/internet-providers/texas",
   };
 
   const svg = document.getElementById("svg");
@@ -157,16 +157,15 @@
   const statePaths = svg.querySelectorAll("path[data-id]");
 
   statePaths.forEach(function (path) {
-    const code = path.getAttribute("data-id"); // e.g. "CA"
+    const code = (path.getAttribute("data-id") || "").trim().toUpperCase(); // e.g. "CA"
     path.classList.add("state");
     path.setAttribute("data-state", code);
     path.setAttribute("tabindex", "0");
     path.setAttribute("role", "button");
     path.setAttribute("aria-label", path.getAttribute("data-name") || code);
 
-    // Optional: store computed URL directly on the element (useful for debugging)
-    const url = getStateUrl(code);
-    path.setAttribute("data-href", url);
+    // Helpful for debugging: what URL will this state use?
+    path.setAttribute("data-href", getStateUrl(code));
   });
 
   // 2) Auto-generate centered labels (state initials)
@@ -174,9 +173,9 @@
 
   statePaths.forEach(function (path) {
     const code = path.getAttribute("data-state");
-    const box = path.getBBox();
+    if (!code) return;
 
-    // Skip very tiny states if you want (DC, RI, etc.)
+    const box = path.getBBox();
     if (box.width < 6 && box.height < 6) return;
 
     const text = document.createElementNS(svgNS, "text");
@@ -188,40 +187,39 @@
     svg.appendChild(text);
   });
 
-  // Helper: returns per-state URL (override first, else default pattern)
+  // Helper: default behavior (RESULTS_PAGE?state=XX) unless override exists
   function getStateUrl(stateCode) {
-    const code = String(stateCode || "").toUpperCase().trim();
-
-    // If you want lowercase slugs by default: /internet-providers/ca
-    const defaultUrl = DEFAULT_BASE + encodeURIComponent(code.toLowerCase());
-
+    const code = String(stateCode || "").trim().toUpperCase();
     const override = STATE_LINKS[code];
-    if (!override) return defaultUrl;
 
-    // If override is relative, keep it relative; if absolute, use as-is.
-    return override;
+    // If explicitly set, use it exactly.
+    if (override && String(override).trim()) return String(override).trim();
+
+    // Otherwise preserve existing behavior exactly.
+    return RESULTS_PAGE + "?state=" + encodeURIComponent(code);
   }
 
-  // 3) Click → go to per-state URL, break out of iframe
+  // 3) Click → go to URL, break out of iframe
   svg.addEventListener("click", function (e) {
     const target = e.target.closest(".state");
     if (!target) return;
 
     const stateCode = target.getAttribute("data-state");
+    if (!stateCode) return;
 
     try { localStorage.setItem("selectedState", stateCode); } catch (err) {}
 
     const url = getStateUrl(stateCode);
-
-    // Break out of iframe so the page loads at top-level
     window.top.location.href = url;
   });
 
   // 4) Keyboard support (Enter/Space)
   svg.addEventListener("keydown", function (e) {
     if (e.key !== "Enter" && e.key !== " ") return;
+
     const target = e.target.closest(".state");
     if (!target) return;
+
     e.preventDefault();
     target.click();
   });
