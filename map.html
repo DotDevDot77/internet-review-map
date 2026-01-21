@@ -138,7 +138,17 @@
 
 <script>
 (function () {
-  const RESULTS_PAGE = "https://internet-review.webflow.io/internet-providers";
+  // Default pattern so EVERY state automatically has a page:
+  // Example: /internet-providers/ca, /internet-providers/ny, etc.
+  const DEFAULT_BASE = "/internet-providers";
+
+  // Manual overrides (only add states you want to customize)
+  // You can use absolute URLs or relative paths.
+  const STATE_LINKS = {
+    CA: "/ca",
+    TX: "/tx",
+    // NY: "/states/new-york",
+  };
 
   const svg = document.getElementById("svg");
   if (!svg) return;
@@ -147,12 +157,16 @@
   const statePaths = svg.querySelectorAll("path[data-id]");
 
   statePaths.forEach(function (path) {
-    const code = path.getAttribute("data-id");  // e.g. "CA"
+    const code = path.getAttribute("data-id"); // e.g. "CA"
     path.classList.add("state");
     path.setAttribute("data-state", code);
     path.setAttribute("tabindex", "0");
     path.setAttribute("role", "button");
     path.setAttribute("aria-label", path.getAttribute("data-name") || code);
+
+    // Optional: store computed URL directly on the element (useful for debugging)
+    const url = getStateUrl(code);
+    path.setAttribute("data-href", url);
   });
 
   // 2) Auto-generate centered labels (state initials)
@@ -174,20 +188,32 @@
     svg.appendChild(text);
   });
 
-  // 3) Click → go to providers page with state param, break out of iframe
+  // Helper: returns per-state URL (override first, else default pattern)
+  function getStateUrl(stateCode) {
+    const code = String(stateCode || "").toUpperCase().trim();
+
+    // If you want lowercase slugs by default: /internet-providers/ca
+    const defaultUrl = DEFAULT_BASE + encodeURIComponent(code.toLowerCase());
+
+    const override = STATE_LINKS[code];
+    if (!override) return defaultUrl;
+
+    // If override is relative, keep it relative; if absolute, use as-is.
+    return override;
+  }
+
+  // 3) Click → go to per-state URL, break out of iframe
   svg.addEventListener("click", function (e) {
     const target = e.target.closest(".state");
     if (!target) return;
 
     const stateCode = target.getAttribute("data-state");
 
-    try {
-      localStorage.setItem("selectedState", stateCode);
-    } catch (err) {}
+    try { localStorage.setItem("selectedState", stateCode); } catch (err) {}
 
-    const url = RESULTS_PAGE + "?state=" + encodeURIComponent(stateCode);
+    const url = getStateUrl(stateCode);
 
-    // Break out of iframe so the results load in the parent page
+    // Break out of iframe so the page loads at top-level
     window.top.location.href = url;
   });
 
@@ -201,4 +227,5 @@
   });
 })();
 </script>
+
 
